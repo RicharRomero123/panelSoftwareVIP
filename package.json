@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/env": "^15.3.5",
     "axios": "^1.10.0",
     "framer-motion": "^12.23.0",
     "js-cookie": "^3.0.5",

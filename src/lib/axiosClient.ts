@@ -3,7 +3,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const axiosClient = axios.create({
-    baseURL: 'http://localhost:8080', // URL base de tu API
+    baseURL: process.env.NEXT_PUBLIC_API_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -11,7 +11,7 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
     (config) => {
-        const token = Cookies.get('jwtToken'); // Descomentar cuando implementes JWT
+        const token = Cookies.get('jwtToken');
          if (token) {
         config.headers.Authorization = `Bearer ${token}`;
          }
