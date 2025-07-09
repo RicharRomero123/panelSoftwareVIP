@@ -3,17 +3,20 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import userService from '@/services/authService';
-import { User, UserRole } from '@/types';
+// FIX 1: 'UserRole' no se usaba, así que se eliminó de la importación.
+import { User } from '@/types';
 import { CreateUserModal } from '@/components/users/CreateUserModal';
 import { ResetPasswordModal } from '@/components/users/ResetPasswordModal';
 import { UserTableRow } from '@/components/users/UserTableRow';
 import toast, { Toaster } from 'react-hot-toast';
 import { FiRefreshCw, FiSearch, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { AxiosError } from 'axios';
 
 const UsuariosPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+    // FIX 2: El estado 'error' no se utilizaba para mostrar nada en la UI,
+    // ya que los errores se manejan con toast. Se eliminó para limpiar el código.
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     // State for modals
@@ -34,13 +37,17 @@ const UsuariosPage: React.FC = () => {
 
     const fetchUsers = async () => {
         setLoading(true);
-        setError(null);
         try {
             const data = await userService.getAllUsers();
             setUsers(data);
-        } catch (err: any) {
+        } catch (err) { // FIX 3: Se cambió 'any' por un manejo de error más seguro.
             console.error('Error al obtener usuarios:', err);
-            toast.error(err.response?.data?.message || 'Error al cargar los usuarios.');
+            // Se verifica si el error es una instancia de AxiosError para acceder a sus propiedades de forma segura.
+            let errorMessage = 'Error al cargar los usuarios.';
+            if (err instanceof AxiosError && err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            }
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
