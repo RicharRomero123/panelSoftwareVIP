@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Order, OrderStatus, AddDeliveryDetailsPayload } from "@/types";
 import orderService from "@/services/orderService";
 import { motion, AnimatePresence } from 'framer-motion';
-// ✅ SOLUCIÓN: Se eliminó el icono 'User' no utilizado y se añadieron los necesarios
+// ✅ SOLUCIÓN: Se eliminó el icono 'User' no utilizado
 import { Package, Clock, Search, RefreshCw, Pencil, Truck, X, CheckCircle, Loader, ChevronDown, AlertTriangle, Trash2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -199,7 +199,9 @@ const OrdenesPage: React.FC = () => {
         if (!selectedOrder) return;
         setUpdateLoading(true);
         try {
-            // @ts-ignore - Assuming deleteOrder will be added to the service
+            // ✅ SOLUCIÓN: Se usa @ts-expect-error para indicar que se espera un error de tipo
+            // hasta que la función 'deleteOrder' se añada al servicio.
+            // @ts-expect-error
             await orderService.deleteOrder(selectedOrder.id);
             toast.success('Orden eliminada correctamente.');
             fetchOrders();
