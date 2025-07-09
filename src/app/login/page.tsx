@@ -1,13 +1,11 @@
-// src/app/login/page.tsx
 'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Importar el componente Image de Next.js
+import Image from 'next/image';
 import { useAuth } from "@/context/AuthContext";
 import { loginUser } from "@/services/authService";
-
-// --- Iconos SVG para una mejor experiencia visual y sin dependencias externas ---
+import { AxiosError } from 'axios'; // 👈 Importar AxiosError
 
 const UserIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,7 +27,7 @@ const EyeIcon = ({...props}) => (
 );
 
 const EyeOffIcon = ({...props}) => (
-     <svg xmlns="http://www.w3.org/2000/svg" {...props} className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" {...props} className="h-5 w-5 text-gray-500 cursor-pointer hover:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 .847 0 1.67.127 2.454.364m-6.082 2.882a3 3 0 003.434 3.434M16 12a4 4 0 01-4 4m0 0l-4-4m4 4l4-4m-4 4V4" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
     </svg>
@@ -40,9 +38,6 @@ const ErrorIcon = () => (
         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
     </svg>
 );
-
-
-// --- Componente de Login Refactorizado ---
 
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -60,10 +55,9 @@ const LoginPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Simulación de demora para ver el loader
             await new Promise(resolve => setTimeout(resolve, 1500)); 
-            
             const response = await loginUser(email, password);
+
             login({
                 id: response.id,
                 nombre: response.nombre,
@@ -77,12 +71,20 @@ const LoginPage: React.FC = () => {
                 logout();
                 setError('¡Hola! Este panel es solo para nuestros administradores. Gracias por tu visita.');
             }
-        } catch (err: any) {
-            // Mapeo de errores específico para una mejor UX
-            if (err.response && err.response.status === 500) {
-                setError('Esta cuenta no existe o hay un problema con el servidor. Por favor, intenta de nuevo más tarde.');
+        } catch (err: unknown) {
+            const axiosError = err as AxiosError;
+
+            if (axiosError.response) {
+                if (axiosError.response.status === 500) {
+                    setError('Esta cuenta no existe o hay un problema con el servidor. Por favor, intenta de nuevo más tarde.');
+                } else {
+                    setError(
+                        (axiosError.response.data as { message?: string })?.message ||
+                        '¡Ups! El email o la contraseña no son correctos. ¿Probamos de nuevo?'
+                    );
+                }
             } else {
-                setError(err.response?.data?.message || '¡Ups! El email o la contraseña no son correctos. ¿Probamos de nuevo?');
+                setError('Ocurrió un error inesperado. Intenta de nuevo.');
             }
         } finally {
             setIsLoading(false);
@@ -92,14 +94,13 @@ const LoginPage: React.FC = () => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 transition-colors duration-300">
             <div className="w-full max-w-md">
-                {/* Logo de la App */}
                 <div className="flex justify-center mb-6">
                     <Image
                         src="https://res.cloudinary.com/dod56svuf/image/upload/v1751876631/Logotipo_reposter%C3%ADa_y_macarrones_marr%C3%B3n_qa2wd1.png"
                         alt="Logotipo de la Pastelería"
                         width={140}
                         height={140}
-                        priority // Carga la imagen con prioridad ya que es LCP (Largest Contentful Paint)
+                        priority
                     />
                 </div>
                 
@@ -109,18 +110,15 @@ const LoginPage: React.FC = () => {
                         <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Ingresa tus credenciales para administrar</p>
                         
                         <form onSubmit={handleSubmit} noValidate>
-                            {/* Campo de Email con Icono */}
                             <div className="mb-4 relative">
-                                <label htmlFor="email" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2 sr-only">
-                                    Email
-                                </label>
+                                <label htmlFor="email" className="sr-only">Email</label>
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <UserIcon />
                                 </div>
                                 <input
                                     type="email"
                                     id="email"
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg w-full py-3 pl-10 pr-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg w-full py-3 pl-10 pr-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -129,18 +127,15 @@ const LoginPage: React.FC = () => {
                                 />
                             </div>
 
-                            {/* Campo de Contraseña con Icono y Visibilidad */}
                             <div className="mb-6 relative">
-                                <label htmlFor="password" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2 sr-only">
-                                    Contraseña
-                                </label>
+                                <label htmlFor="password" className="sr-only">Contraseña</label>
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <LockIcon />
                                 </div>
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     id="password"
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg w-full py-3 pl-10 pr-10 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg w-full py-3 pl-10 pr-10 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -156,7 +151,6 @@ const LoginPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Mensaje de Error con mejor estilo */}
                             {error && (
                                 <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md mb-6 flex items-center" role="alert">
                                     <ErrorIcon />
@@ -164,7 +158,6 @@ const LoginPage: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* Botón de Envío con Estado de Carga */}
                             <div className="flex items-center justify-center">
                                 <button
                                     type="submit"

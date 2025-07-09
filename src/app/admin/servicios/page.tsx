@@ -1,13 +1,22 @@
 // src/app/admin/servicios/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CreateServicePayload, Service, UpdateServicePayload } from "@/types";
 import serviceService from "@/services/serviceService";
-import { Plus, Edit, Trash2, Search, RefreshCw, Info, Clock, DollarSign, Package, UploadCloud, Image as ImageIcon, CheckCircle, XCircle, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, RefreshCw, Info, Clock, DollarSign, Package, UploadCloud, Image as ImageIcon, CheckCircle, X, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import Image from 'next/image';
+
+// --- INTERFAZ PARA ERRORES DE API (Buena práctica) ---
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 // --- Componente para subir imágenes a Cloudinary ---
 const ImageUploader = ({ initialImageUrl, onUploadSuccess }: { initialImageUrl: string; onUploadSuccess: (url: string) => void; }) => {
@@ -102,7 +111,6 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 const ServiciosPage: React.FC = () => {
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -113,22 +121,26 @@ const ServiciosPage: React.FC = () => {
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [editLoading, setEditLoading] = useState<boolean>(false);
 
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+    const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+
     const filteredServices = services.filter(service => service.nombre.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const fetchServices = async () => {
+    const fetchServices = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
             const data = await serviceService.getAllServices();
             setServices(data.sort((a, b) => a.nombre.localeCompare(b.nombre)));
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Error al cargar los servicios.');
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al cargar los servicios.');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchServices(); }, []);
+    useEffect(() => { fetchServices(); }, [fetchServices]);
 
     const handleCreateService = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -139,8 +151,9 @@ const ServiciosPage: React.FC = () => {
             fetchServices();
             setIsCreateModalOpen(false);
             setNewService({ nombre: '', descripcion: '', precioMonedas: 0, requiereEntrega: false, activo: true, tiempoEsperaMinutos: 0, imgUrl: '' });
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Error al crear el servicio.');
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al crear el servicio.');
         } finally {
             setCreateLoading(false);
         }
@@ -162,21 +175,32 @@ const ServiciosPage: React.FC = () => {
             fetchServices();
             setIsEditModalOpen(false);
             setEditingService(null);
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Error al actualizar el servicio.');
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al actualizar el servicio.');
         } finally {
             setEditLoading(false);
         }
     };
+    
+    const openDeleteModal = (service: Service) => {
+        setServiceToDelete(service);
+        setIsDeleteModalOpen(true);
+    };
 
-    const handleDeleteService = async (id: string) => {
-        if (!window.confirm('¿Estás seguro de que quieres eliminar este servicio? Esta acción es irreversible.')) return;
+    const handleDeleteService = async () => {
+        if (!serviceToDelete) return;
+        setDeleteLoading(true);
         try {
-            await serviceService.deleteService(id);
+            await serviceService.deleteService(serviceToDelete.id);
             toast.success('Servicio eliminado correctamente.');
             fetchServices();
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Error al eliminar el servicio.');
+            setIsDeleteModalOpen(false);
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al eliminar el servicio.');
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -230,6 +254,23 @@ const ServiciosPage: React.FC = () => {
                         </form>
                     </Modal>
                 )}
+                {isDeleteModalOpen && serviceToDelete && (
+                    <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirmar Eliminación">
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3 text-slate-300">
+                                <AlertTriangle className="h-10 w-10 text-red-400 flex-shrink-0" />
+                                <p>¿Estás seguro de que quieres eliminar el servicio <strong className="text-white">{serviceToDelete.nombre}</strong>? Esta acción es irreversible y no se podrá deshacer.</p>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                                <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="px-5 py-2 bg-slate-700/50 rounded-lg">Cancelar</button>
+                                <button onClick={handleDeleteService} disabled={deleteLoading} className="px-5 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2">
+                                    {deleteLoading && <RefreshCw className="animate-spin" />}
+                                    {deleteLoading ? 'Eliminando...' : 'Sí, eliminar'}
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
             </AnimatePresence>
 
             <div className="max-w-7xl mx-auto">
@@ -271,7 +312,7 @@ const ServiciosPage: React.FC = () => {
                                 </div>
                                 <div className="p-4 bg-slate-900/50 border-t border-slate-700 flex gap-2">
                                     <button onClick={() => openEditModal(service)} className="w-full flex items-center justify-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg transition-colors"><Edit size={16}/>Editar</button>
-                                    <button onClick={() => handleDeleteService(service.id)} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                    <button onClick={() => openDeleteModal(service)} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16}/></button>
                                 </div>
                             </motion.div>
                         ))}

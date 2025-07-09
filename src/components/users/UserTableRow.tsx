@@ -2,10 +2,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { User as UserIcon, DollarSign, RefreshCw, KeyRound } from 'lucide-react';
+// ✅ SOLUCIÓN: Se eliminó 'User as UserIcon' no utilizado
+import { DollarSign, RefreshCw, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { User } from '@/types';
 import userService from '@/services/authService';
+
+// ✅ SOLUCIÓN: Interfaz para manejar errores de API de forma segura
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 interface UserTableRowProps {
   user: User;
@@ -28,8 +38,9 @@ export const UserTableRow: React.FC<UserTableRowProps> = ({ user, onDataChange, 
       toast.success(`Se recargaron ${rechargeAmount} monedas a ${user.nombre}.`);
       setRechargeAmount(0); // Reset input
       onDataChange(); // Refresh data in parent
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al recargar monedas.');
+    } catch (err: unknown) { // ✅ SOLUCIÓN: Se usa 'unknown' en lugar de 'any'
+      const apiError = err as ApiError;
+      toast.error(apiError.response?.data?.message || 'Error al recargar monedas.');
     } finally {
       setIsRecharging(false);
     }

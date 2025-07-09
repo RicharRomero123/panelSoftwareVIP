@@ -4,11 +4,20 @@
 import React, { useState } from 'react';
 import {
   User, Mail, Lock, UserPlus, RefreshCw, Eye, EyeOff, Shield, X, CheckCircle
-} from 'lucide-react'; // ✅ Se usan iconos de Lucide para consistencia
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import userService from '@/services/authService';
 import { CreateUserPayload, UserRole } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// ✅ SOLUCIÓN: Interfaz para manejar errores de API de forma segura
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 interface ModalProps {
   isOpen: boolean;
@@ -28,7 +37,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         className="relative bg-slate-800/80 backdrop-blur-lg border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
       >
-        {/* ✅ Efecto de Aurora en el fondo */}
         <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] bg-gradient-radial from-blue-600/10 via-transparent to-transparent animate-pulse"></div>
         
         <div className="relative z-10">
@@ -86,8 +94,9 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
       onUserCreated();
       onClose();
       setFormData({ nombre: '', email: '', password: '', rol: 'CLIENTE' });
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al crear el usuario.');
+    } catch (err: unknown) { // ✅ SOLUCIÓN: Se usa 'unknown' en lugar de 'any'
+      const apiError = err as ApiError;
+      toast.error(apiError.response?.data?.message || 'Error al crear el usuario.');
     } finally {
       setLoading(false);
     }
@@ -99,7 +108,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
         <Modal isOpen={isOpen} onClose={onClose} title="Crear Nuevo Usuario">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Nombre */}
             <div>
               <label htmlFor="nombre" className="block text-sm font-medium text-slate-300 mb-2">Nombre completo</label>
               <div className="relative">
@@ -112,7 +120,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
               </div>
             </div>
 
-            {/* Correo */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">Correo electrónico</label>
               <div className="relative">
@@ -125,7 +132,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
               </div>
             </div>
 
-            {/* Contraseña */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
               <div className="relative">
@@ -141,7 +147,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
               </div>
             </div>
 
-            {/* Selector de Rol */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Rol de usuario</label>
               <div className="grid grid-cols-2 gap-4">
@@ -162,7 +167,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
               </div>
             </div>
 
-            {/* Botones de Acción */}
             <div className="mt-8 flex justify-end gap-4">
               <button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-700/50 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition-colors">
                 Cancelar
@@ -183,7 +187,6 @@ export const CreateUserModal: React.FC<{ isOpen: boolean; onClose: () => void; o
   );
 };
 
-// Componente auxiliar para el botón de rol
 const RoleButton = ({ label, icon, isActive, onClick, activeColor }: { label: string, icon: React.ReactNode, isActive: boolean, onClick: () => void, activeColor: 'blue' | 'amber' }) => {
     const activeClasses = activeColor === 'blue' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-amber-500 bg-amber-500/10 text-amber-400';
     const inactiveClasses = 'border-slate-600 hover:border-slate-500 text-slate-400';

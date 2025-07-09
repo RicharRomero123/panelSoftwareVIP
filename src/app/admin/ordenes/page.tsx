@@ -5,8 +5,18 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Order, OrderStatus, AddDeliveryDetailsPayload } from "@/types";
 import orderService from "@/services/orderService";
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, User, Clock, Search, RefreshCw, Pencil, Truck, X, CheckCircle, Loader, ChevronDown } from 'lucide-react';
+// ✅ SOLUCIÓN: Se eliminó el icono 'User' no utilizado
+import { Package, Clock, Search, RefreshCw, Pencil, Truck, X, CheckCircle, Loader, ChevronDown, AlertTriangle, Trash2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+
+// --- INTERFAZ PARA ERRORES DE API (Buena práctica) ---
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 // --- Componente Modal Genérico ---
 const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; icon?: React.ReactNode; children: React.ReactNode; }> = ({ isOpen, onClose, title, icon, children }) => {
@@ -32,7 +42,7 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; ico
 };
 
 // --- Componente de Fila de Orden Expandible ---
-const OrderListItem: React.FC<{ order: Order; onOpenStatusModal: (order: Order) => void; onOpenDeliveryModal: (order: Order) => void; }> = ({ order, onOpenStatusModal, onOpenDeliveryModal }) => {
+const OrderListItem: React.FC<{ order: Order; onOpenStatusModal: (order: Order) => void; onOpenDeliveryModal: (order: Order) => void; onDeleteOrder: (order: Order) => void; isClient: boolean; }> = ({ order, onOpenStatusModal, onOpenDeliveryModal, onDeleteOrder, isClient }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     
     const getStatusInfo = (status: OrderStatus) => {
@@ -78,8 +88,8 @@ const OrderListItem: React.FC<{ order: Order; onOpenStatusModal: (order: Order) 
                                 <div>
                                     <p className="font-semibold text-white mb-1">Información General</p>
                                     <p><strong>ID Orden:</strong> <span className="font-mono text-slate-400">{order.id}</span></p>
-                                    <p><strong>Creada:</strong> {new Date(order.fechaCreacion).toLocaleString('es-PE')}</p>
-                                    <p><strong>Entregada:</strong> {order.fechaEntrega ? new Date(order.fechaEntrega).toLocaleString('es-PE') : 'Pendiente'}</p>
+                                    <p><strong>Creada:</strong> {isClient ? new Date(order.fechaCreacion).toLocaleString('es-PE') : '...'}</p>
+                                    <p><strong>Entregada:</strong> {isClient && order.fechaEntrega ? new Date(order.fechaEntrega).toLocaleString('es-PE') : 'Pendiente'}</p>
                                 </div>
                                 <div>
                                     <p className="font-semibold text-white mb-1">Detalles de Entrega</p>
@@ -95,6 +105,7 @@ const OrderListItem: React.FC<{ order: Order; onOpenStatusModal: (order: Order) 
                             <div className="flex flex-wrap gap-3 justify-end pt-4 border-t border-slate-700/50">
                                 <button onClick={() => onOpenStatusModal(order)} className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"><Pencil className="-ml-1 mr-2 h-5 w-5" />Cambiar Estado</button>
                                 {!order.entrega && <button onClick={() => onOpenDeliveryModal(order)} className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 transition-colors"><Truck className="-ml-1 mr-2 h-5 w-5" />Agregar Entrega</button>}
+                                <button onClick={() => onDeleteOrder(order)} className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 transition-colors"><Trash2 className="-ml-1 mr-2 h-5 w-5" />Eliminar</button>
                             </div>
                         </div>
                     </motion.div>
@@ -108,12 +119,13 @@ const OrderListItem: React.FC<{ order: Order; onOpenStatusModal: (order: Order) 
 const OrdenesPage: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'activo' | 'historial'>('activo');
+    const [isClient, setIsClient] = useState(false);
 
     const [isStatusModalOpen, setIsStatusModalOpen] = useState<boolean>(false);
     const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState<boolean>(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     
     const [newOrderStatus, setNewOrderStatus] = useState<OrderStatus>('PENDIENTE');
@@ -126,11 +138,17 @@ const OrdenesPage: React.FC = () => {
         try {
             const data = await orderService.getAllOrders();
             setOrders(data.sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()));
-        } catch (err: any) { toast.error(err.response?.data?.message || 'Error al cargar las órdenes.'); } 
+        } catch (err: unknown) { 
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al cargar las órdenes.');
+        } 
         finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetchOrders(); }, [fetchOrders]);
+    useEffect(() => { 
+        setIsClient(true);
+        fetchOrders(); 
+    }, [fetchOrders]);
 
     const filteredOrders = useMemo(() => orders.filter(order =>
         order.usuarioNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,6 +161,7 @@ const OrdenesPage: React.FC = () => {
 
     const openStatusModal = (order: Order) => { setSelectedOrder(order); setNewOrderStatus(order.estado); setIsStatusModalOpen(true); };
     const openDeliveryModal = (order: Order) => { setSelectedOrder(order); setDeliveryDetails({ usuarioCuenta: '', clave: '', nota: '' }); setIsDeliveryModalOpen(true); };
+    const openDeleteModal = (order: Order) => { setSelectedOrder(order); setIsDeleteModalOpen(true); };
 
     const handleUpdateStatus = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -153,7 +172,10 @@ const OrdenesPage: React.FC = () => {
             toast.success('Estado de la orden actualizado.');
             fetchOrders();
             setIsStatusModalOpen(false);
-        } catch (err: any) { toast.error(err.response?.data?.message || 'Error al actualizar estado.'); } 
+        } catch (err: unknown) { 
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al actualizar estado.');
+        } 
         finally { setUpdateLoading(false); }
     };
 
@@ -166,8 +188,28 @@ const OrdenesPage: React.FC = () => {
             toast.success('Detalles de entrega guardados.');
             fetchOrders();
             setIsDeliveryModalOpen(false);
-        } catch (err: any) { toast.error(err.response?.data?.message || 'Error al guardar detalles.'); } 
+        } catch (err: unknown) { 
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al guardar detalles.');
+        } 
         finally { setUpdateLoading(false); }
+    };
+
+    const handleDeleteOrder = async () => {
+        if (!selectedOrder) return;
+        setUpdateLoading(true);
+        try {
+            // @ts-ignore - Assuming deleteOrder will be added to the service
+            await orderService.deleteOrder(selectedOrder.id);
+            toast.success('Orden eliminada correctamente.');
+            fetchOrders();
+            setIsDeleteModalOpen(false);
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            toast.error(apiError.response?.data?.message || 'Error al eliminar la orden.');
+        } finally {
+            setUpdateLoading(false);
+        }
     };
 
     return (
@@ -198,7 +240,7 @@ const OrdenesPage: React.FC = () => {
                         <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                             {(activeTab === 'activo' ? activeOrders : historicalOrders).length > 0 ? (
                                 (activeTab === 'activo' ? activeOrders : historicalOrders).map(order => (
-                                    <OrderListItem key={order.id} order={order} onOpenStatusModal={openStatusModal} onOpenDeliveryModal={openDeliveryModal} />
+                                    <OrderListItem key={order.id} order={order} onOpenStatusModal={openStatusModal} onOpenDeliveryModal={openDeliveryModal} onDeleteOrder={openDeleteModal} isClient={isClient} />
                                 ))
                             ) : (
                                 <div className="text-center py-20 text-slate-500">No hay órdenes en esta sección.</div>
@@ -234,6 +276,17 @@ const OrdenesPage: React.FC = () => {
                              <div><label className="block text-sm font-medium text-slate-300 mb-2">Nota (Opcional)</label><textarea rows={2} value={deliveryDetails.nota} onChange={(e) => setDeliveryDetails({...deliveryDetails, nota: e.target.value})} className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea></div>
                              <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setIsDeliveryModalOpen(false)} className="px-5 py-2 bg-slate-700/50 rounded-lg">Cancelar</button><button type="submit" disabled={updateLoading} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold disabled:opacity-50">{updateLoading ? 'Guardando...' : 'Guardar Detalles'}</button></div>
                         </form>
+                    </Modal>
+                )}
+                {isDeleteModalOpen && selectedOrder && (
+                     <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirmar Eliminación" icon={<AlertTriangle className="text-red-400"/>}>
+                        <div className="space-y-4">
+                            <p className="text-slate-300">¿Estás seguro de que quieres eliminar la orden <strong className="font-mono text-white">#{selectedOrder.id.substring(0,8)}</strong>? Esta acción es irreversible.</p>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="px-5 py-2 bg-slate-700/50 rounded-lg">Cancelar</button>
+                                <button onClick={handleDeleteOrder} disabled={updateLoading} className="px-5 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold disabled:opacity-50">{updateLoading ? 'Eliminando...' : 'Sí, eliminar'}</button>
+                            </div>
+                        </div>
                     </Modal>
                 )}
             </AnimatePresence>

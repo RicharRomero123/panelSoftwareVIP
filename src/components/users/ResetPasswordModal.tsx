@@ -1,11 +1,22 @@
+// src/components/users/ResetPasswordModal.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { KeyRound, Lock, Info, RefreshCw, User, Mail, Eye, EyeOff, X } from 'lucide-react';
+// ✅ SOLUCIÓN: Se eliminaron los iconos 'Info' y 'Mail' no utilizados
+import { KeyRound, Lock, RefreshCw, User, Eye, EyeOff, X } from 'lucide-react';
 import userService from '@/services/authService';
 import { User as UserType } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// ✅ SOLUCIÓN: Interfaz para manejar errores de API de forma segura
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 interface ModalProps {
   isOpen: boolean;
@@ -97,8 +108,9 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
       await userService.resetUserPassword(user.id, newPassword);
       toast.success(`¡Contraseña de ${user.nombre} actualizada!`);
       onClose();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al resetear la contraseña.');
+    } catch (err: unknown) { // ✅ SOLUCIÓN: Se usa 'unknown' en lugar de 'any'
+      const apiError = err as ApiError;
+      toast.error(apiError.response?.data?.message || 'Error al resetear la contraseña.');
     } finally {
       setLoading(false);
     }
@@ -142,7 +154,6 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, 
                     {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
                   </button>
                 </div>
-                {/* Indicador de Fortaleza */}
                 <div className="flex items-center gap-2 mt-2">
                     <div className="flex-grow grid grid-cols-4 gap-1.5">
                         {Array.from({ length: 4 }).map((_, i) => (
