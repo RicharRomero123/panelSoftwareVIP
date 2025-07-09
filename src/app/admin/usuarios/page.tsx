@@ -1,61 +1,54 @@
 // src/app/admin/usuarios/page.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import userService from '@/services/authService';
-import { User } from '@/types'; // ✅ SOLUCIÓN: Se eliminó 'UserRole' no utilizado
+import { User, UserRole } from '@/types';
 import { CreateUserModal } from '@/components/users/CreateUserModal';
 import { ResetPasswordModal } from '@/components/users/ResetPasswordModal';
 import { UserTableRow } from '@/components/users/UserTableRow';
 import toast, { Toaster } from 'react-hot-toast';
 import { FiRefreshCw, FiSearch, FiUserPlus, FiUsers } from 'react-icons/fi';
 
-// ✅ SOLUCIÓN: Interfaz para manejar errores de API de forma segura
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-}
-
 const UsuariosPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
 
+    // State for modals
     const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
     const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(false);
     const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
 
     const { clientes, administradores } = useMemo(() => {
-        const filtered = users.filter(user =>
+        const filteredUsers = users.filter(user =>
             user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.email.toLowerCase().includes(searchTerm.toLowerCase())
         );
         return {
-            clientes: filtered.filter(user => user.rol === 'CLIENTE'),
-            administradores: filtered.filter(user => user.rol === 'ADMIN')
+            clientes: filteredUsers.filter(user => user.rol === 'CLIENTE'),
+            administradores: filteredUsers.filter(user => user.rol === 'ADMIN')
         };
     }, [users, searchTerm]);
 
-    const fetchUsers = useCallback(async () => {
+    const fetchUsers = async () => {
         setLoading(true);
+        setError(null);
         try {
             const data = await userService.getAllUsers();
             setUsers(data);
-        } catch (err: unknown) { // ✅ SOLUCIÓN: Se usa 'unknown' en lugar de 'any'
+        } catch (err: any) {
             console.error('Error al obtener usuarios:', err);
-            const apiError = err as ApiError;
-            toast.error(apiError.response?.data?.message || 'Error al cargar los usuarios.');
+            toast.error(err.response?.data?.message || 'Error al cargar los usuarios.');
         } finally {
             setLoading(false);
         }
-    }, []);
+    };
 
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers]);
+    }, []);
 
     const handleOpenResetPassword = (user: User) => {
         setUserToResetPassword(user);
@@ -64,8 +57,6 @@ const UsuariosPage: React.FC = () => {
 
     const renderUserTable = (userList: User[], title: string, color: string) => {
         if (userList.length === 0 && searchTerm) return null;
-        if (userList.length === 0) return null;
-        
         return (
             <div className="mb-10">
                 <h3 className={`text-xl font-semibold mb-4 ${color}`}>{title} ({userList.length})</h3>
@@ -94,8 +85,6 @@ const UsuariosPage: React.FC = () => {
             </div>
         );
     };
-
-    const totalFilteredUsers = clientes.length + administradores.length;
 
     return (
         <div className="min-h-screen bg-slate-900 text-white p-4 sm:p-8">
@@ -135,21 +124,9 @@ const UsuariosPage: React.FC = () => {
                 </div>
 
                 {loading && <div className="text-center py-10"><FiRefreshCw className="animate-spin text-3xl mx-auto" /></div>}
-                
-                {!loading && (
-                    <>
-                        {renderUserTable(administradores, 'Administradores', 'text-amber-400')}
-                        {renderUserTable(clientes, 'Clientes', 'text-green-400')}
-                    </>
-                )}
-
-                {/* ✅ SOLUCIÓN: Lógica de mensaje corregida */}
-                {!loading && users.length > 0 && totalFilteredUsers === 0 && (
-                    <p className="text-center py-10 text-slate-500">No se encontraron usuarios con ese término de búsqueda.</p>
-                )}
-                {!loading && users.length === 0 && (
-                    <p className="text-center py-10 text-slate-500">No hay usuarios registrados.</p>
-                )}
+                {!loading && renderUserTable(administradores, 'Administradores', 'text-amber-400')}
+                {!loading && renderUserTable(clientes, 'Clientes', 'text-green-400')}
+                {!loading && users.length === 0 && <p className="text-center py-10 text-slate-500">No hay usuarios registrados.</p>}
             </div>
         </div>
     );

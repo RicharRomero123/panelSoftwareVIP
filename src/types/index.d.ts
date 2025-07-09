@@ -70,6 +70,8 @@ export interface AuthResponse {
     email: string;
     rol: UserRole;
     message: string;
+    token: string; // Requerido
+    type: string;  // Requerido
 }
 
 /**
@@ -80,6 +82,9 @@ export interface UserSession {
     nombre: string;
     email: string;
     rol: UserRole;
+    token: string; // Agregado para almacenar el token JWT en la sesión
+    type: string; // Agregado para almacenar el tipo de usuario
+
 }
 
 /**
@@ -93,6 +98,7 @@ export interface User {
     monedas: number;
 }
 
+
 /**
  * Interfaz para los datos necesarios para crear un nuevo usuario.
  */
@@ -101,6 +107,8 @@ export interface CreateUserPayload {
     email: string;
     password?: string;
     rol: UserRole;
+
+
 }
 
 /**

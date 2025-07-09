@@ -1,6 +1,6 @@
 // src/services/authService.ts
 import axiosClient from '../lib/axiosClient';
-import {AuthResponse, CreateUserPayload, RechargeCoinsPayload, ResetPasswordPayload, User} from '../types';
+import { AuthResponse, CreateUserPayload, RechargeCoinsPayload, ResetPasswordPayload, User } from '../types';
 
 export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
     const response = await axiosClient.post<AuthResponse>('/auth/login', { email, password });

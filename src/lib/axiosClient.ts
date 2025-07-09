@@ -12,9 +12,10 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
     (config) => {
         const token = Cookies.get('jwtToken');
-         if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-         }
+        if (token) {
+            // CORRECCIÓN: Se añade "Bearer " antes del token.
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error) => {
