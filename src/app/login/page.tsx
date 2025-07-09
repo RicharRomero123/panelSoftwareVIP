@@ -49,29 +49,35 @@ const LoginPage: React.FC = () => {
     const { login, logout } = useAuth();
     const router = useRouter();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
+    // Dentro de tu función handleSubmit...
 
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1500)); 
-            const response = await loginUser(email, password);
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-            login({
-                id: response.id,
-                nombre: response.nombre,
-                email: response.email,
-                rol: response.rol,
-            });
+    try {
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        const response = await loginUser(email, password);
 
-            if (response.rol === 'ADMIN') {
-                router.push('/admin/usuarios');
-            } else {
-                logout();
-                setError('¡Hola! Este panel es solo para nuestros administradores. Gracias por tu visita.');
-            }
-        } catch (err: unknown) {
+        // ✅ CORRECCIÓN AQUÍ: Añade token y type al objeto
+        login({
+            id: response.id,
+            nombre: response.nombre,
+            email: response.email,
+            rol: response.rol,
+            token: response.token, // <-- Propiedad añadida
+            type: response.type,   // <-- Propiedad añadida
+        });
+
+        if (response.rol === 'ADMIN') {
+            router.push('/admin/usuarios');
+        } else {
+            logout();
+            setError('¡Hola! Este panel es solo para nuestros administradores. Gracias por tu visita.');
+        }
+    } catch (err: unknown) {
+        // ... el resto de tu manejo de errores
             const axiosError = err as AxiosError;
 
             if (axiosError.response) {
