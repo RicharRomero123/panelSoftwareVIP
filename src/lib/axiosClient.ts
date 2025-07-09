@@ -1,4 +1,4 @@
-// src/lib/axiosClient.ts
+// src/lib/axiosClient.ts (CORREGIDO)
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
@@ -13,7 +13,7 @@ axiosClient.interceptors.request.use(
     (config) => {
         const token = Cookies.get('jwtToken');
         if (token) {
-            // CORRECCIÓN: Se añade "Bearer " antes del token.
+            // ✅ CORRECCIÓN AQUÍ: Añadir "Bearer " antes del token
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;

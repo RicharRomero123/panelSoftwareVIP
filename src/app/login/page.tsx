@@ -60,14 +60,13 @@ const handleSubmit = async (e: React.FormEvent) => {
         await new Promise(resolve => setTimeout(resolve, 1500)); 
         const response = await loginUser(email, password);
 
-        // ✅ CORRECCIÓN AQUÍ: Añade token y type al objeto
         login({
             id: response.id,
             nombre: response.nombre,
             email: response.email,
             rol: response.rol,
-            token: response.token, // <-- Propiedad añadida
-            type: response.type,   // <-- Propiedad añadida
+            token: response.token, 
+            type: response.type,  
         });
 
         if (response.rol === 'ADMIN') {
