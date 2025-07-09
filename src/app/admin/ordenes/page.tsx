@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Order, OrderStatus, AddDeliveryDetailsPayload } from "@/types";
 import orderService from "@/services/orderService";
 import { motion, AnimatePresence } from 'framer-motion';
-// ✅ SOLUCIÓN: Se eliminó el icono 'User' no utilizado
+// ✅ SOLUCIÓN: Se eliminó el icono 'User' no utilizado y se añadieron los necesarios
 import { Package, Clock, Search, RefreshCw, Pencil, Truck, X, CheckCircle, Loader, ChevronDown, AlertTriangle, Trash2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
